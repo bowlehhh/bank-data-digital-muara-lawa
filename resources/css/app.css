@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+    --color-primary: #B91C1C;
+    --color-primary-hover: #991B1B;
+    --color-accent: #DC2626;
+    --color-primary-soft: #FEF2F2;
+    --color-background: #F8FAFC;
+    --color-surface: #FFFFFF;
+    --color-border: #E5E7EB;
+    --color-text: #1F2937;
+    --color-muted: #6B7280;
+    --color-success: #15803D;
+    --color-warning: #B45309;
+    --color-info: #1D4ED8;
+}
+
+@layer base {
+    body { @apply bg-background font-sans text-text antialiased; }
+    button:not(:disabled), summary { cursor: pointer; }
+    :focus-visible { @apply outline-2 outline-offset-4 outline-primary; }
+    [disabled] { cursor: not-allowed; }
+}
+
+@layer components {
+    .panel { @apply rounded-xl border border-border bg-surface shadow-xs; }
+    .button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold; }
+    .button-primary { @apply bg-primary text-white hover:bg-primary-hover disabled:bg-primary-soft disabled:text-primary; }
+    .button-secondary { @apply border border-border bg-white text-text hover:bg-gray-50 disabled:bg-gray-50 disabled:text-muted; }
+    .field { @apply min-h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-base; }
+    .nav-item { @apply flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium; }
+    .nav-pending { @apply text-muted; }
+}
+
+.sidebar-dialog { margin: 0; height: 100dvh; max-height: 100dvh; width: min(88vw, 20rem); max-width: none; }
+.sidebar-dialog::backdrop { background: rgb(15 23 42 / 40%); }

@@ -1,0 +1,33 @@
+<?php
+
+return [
+    'global' => [
+        '00_PEDOMAN_DAN_SOP' => [
+            '01_SOP', '02_STANDAR_STRUKTUR_FOLDER', '03_STANDAR_PENAMAAN_FILE', '04_DAFTAR_INVENTARIS',
+        ],
+    ],
+    'annual' => [
+        '01_PERENCANAAN_DAN_PROGRAM' => [
+            '01_RENSTRA', '02_RENJA', '03_RKT', '04_PROGRAM_DAN_KEGIATAN', '05_DATA_PENDUKUNG_PERENCANAAN',
+        ],
+        '02_PENGANGGARAN' => [
+            '01_RKA', '02_DPA', '03_DPPA', '04_DATA_PENDUKUNG_ANGGARAN',
+        ],
+        '03_PENATAUSAHAAN_KEUANGAN' => [
+            '01_SPP', '02_SPM', '03_SP2D', '04_SPJ', '05_BUKU_KAS', '06_PAJAK', '07_BUKTI_PENDUKUNG',
+        ],
+        '04_LAPORAN_KEUANGAN' => [
+            '01_LAPORAN_BULANAN', '02_LAPORAN_TRIWULAN', '03_LAPORAN_SEMESTER', '04_LAPORAN_TAHUNAN', '05_REKONSILIASI',
+        ],
+        '05_AKUNTABILITAS_DAN_PELAPORAN' => [
+            '01_SAKIP', '02_LKJIP', '03_LPPD', '04_MONITORING_DAN_EVALUASI', '05_LAPORAN_LAINNYA',
+        ],
+        '06_PEMERIKSAAN_DAN_TINDAK_LANJUT' => [
+            '01_BPK', '02_INSPEKTORAT', '03_BPKP', '04_TINDAK_LANJUT',
+        ],
+        '07_DATA_PENDUKUNG' => [
+            '01_SURAT_MASUK', '02_SURAT_KELUAR', '03_NOTULEN', '04_DOKUMENTASI', '05_DATA_LAINNYA',
+        ],
+        '99_ARSIP_SEMENTARA' => [],
+    ],
+];

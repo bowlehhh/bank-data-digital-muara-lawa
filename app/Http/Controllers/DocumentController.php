@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Exceptions\DuplicateDocument;
+use App\Http\Requests\ListDocumentsRequest;
+use App\Http\Requests\StoreDocumentRequest;
+use App\Models\Document;
+use App\Models\Folder;
+use App\Services\DocumentUploadService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
+use Throwable;
+
+class DocumentController extends Controller
+{
+    public function index(ListDocumentsRequest $request): View
+    {
+        $data = $request->validated();
+        $activeFolder = isset($data['folder_id']) ? Folder::query()->with('parent')->find($data['folder_id']) : null;
+        $tree = Folder::query()->with(['children.children.children.children'])->withCount(['children', 'documents'])->whereNull('parent_id')->where('is_active', true)->orderBy('year')->orderBy('sort_order')->get();
+        $query = Document::query()->with(['folder', 'currentRevision', 'files']);
+        if ($term = $data['q'] ?? null) {
+            $like = '%'.$term.'%';
+            $query->where(fn ($q) => $q->where('title', 'like', $like)->orWhere('description', 'like', $like)->orWhere('document_type', 'like', $like)->orWhere('period', 'like', $like)->orWhere('year', 'like', $like)->orWhere('version_code', 'like', $like)->orWhereHas('folder', fn ($folder) => $folder->where('name', 'like', $like)->orWhere('code', 'like', $like))->orWhereHas('files', fn ($files) => $files->where('stored_filename', 'like', $like)->orWhere('original_filename', 'like', $like)));
+        }
+
+        return view('documents.index', [
+            'documents' => $query->when($data['year'] ?? null, fn ($q, $value) => $q->where('year', $value))->when($data['folder_id'] ?? null, fn ($q, $value) => $q->where('folder_id', $value))->when($data['period'] ?? null, fn ($q, $value) => $q->where('period', $value))->when($data['version_code'] ?? null, fn ($q, $value) => $q->where('version_code', $value))->when($data['extension'] ?? null, fn ($q, $value) => $q->whereHas('files', fn ($files) => $files->where('extension', $value)))->when(($data['location'] ?? null) === 'temporary', fn ($q) => $q->whereHas('folder', fn ($folder) => $folder->where('is_temporary', true)))->when(($data['location'] ?? null) === 'stored', fn ($q) => $q->whereHas('folder', fn ($folder) => $folder->where('is_temporary', false)))->orderBy('created_at', ($data['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->orderByDesc('id')->paginate(15)->withQueryString(),
+            'years' => Document::query()->select('year')->distinct()->orderByDesc('year')->pluck('year'),
+            'folders' => Folder::query()->where('is_active', true)->orderBy('year')->orderBy('sort_order')->get(),
+            'tree' => $tree,
+            'activeFolder' => $activeFolder,
+            'subfolders' => $activeFolder?->children()->where('is_active', true)->withCount(['children', 'documents'])->orderBy('sort_order')->get() ?? collect(),
+        ]);
+    }
+
+    public function create(): View
+    {
+        Gate::authorize('create', Document::class);
+
+        return view('documents.create', ['years' => Folder::query()->where('is_active', true)->whereNotNull('year')->orderByDesc('year')->pluck('year')->unique(), 'folders' => Folder::query()->where('is_active', true)->whereNotNull('year')->orderBy('year')->orderBy('sort_order')->get(['id', 'parent_id', 'year', 'code', 'name', 'folder_type', 'is_temporary', 'is_custom'])]);
+    }
+
+    public function store(StoreDocumentRequest $request, DocumentUploadService $uploads): RedirectResponse
+    {
+        try {
+            $document = $uploads->upload($request->user(), $request->safe()->except('file'), $request->file('file'));
+        } catch (DuplicateDocument $e) {
+            $response = back()->withInput($request->except('file'))->withErrors(['file' => $e->getMessage()]);
+            if ($request->user()->can('view', $e->document)) {
+                $response->with('duplicate_document_id', $e->document->id);
+            }
+
+            return $response;
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->withInput($request->except('file'))->withErrors(['file' => 'Dokumen belum tersimpan karena terjadi gangguan. Silakan coba kembali.']);
+        }
+
+        return redirect()->route('documents.show', $document)->with('status', 'Dokumen berhasil disimpan.');
+    }
+
+    public function show(Document $document): View
+    {
+        abort_unless(Gate::allows('view', $document), 404);
+        $document->load(['folder.parent', 'targetFolder.parent', 'creator', 'files', 'revisions.files', 'revisions.submitter']);
+        $moveFolders = Folder::query()->with('parent.parent.parent.parent')->where('year', $document->year)->where('is_active', true)->orderBy('sort_order')->get();
+
+        return view('documents.show', compact('document', 'moveFolders'));
+    }
+
+    public function destroy(Document $document): RedirectResponse
+    {
+        Gate::authorize('delete', $document);
+        $document->delete();
+
+        return redirect()->route('documents.index')->with('status', 'Dokumen dipindahkan ke sampah. File fisik belum dihapus permanen.');
+    }
+}
