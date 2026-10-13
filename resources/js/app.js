@@ -31,17 +31,47 @@ document.querySelector('[data-toggle-password]')?.addEventListener('click', (eve
 const uploadForm = document.getElementById('document-upload');
 if (uploadForm) {
     const field = (name) => uploadForm.elements.namedItem(name);
-    const groupOptions = [...field('group_folder_id').options].map(option => option.cloneNode(true));
-    const typeOptions = [...field('target_folder_id').options].map(option => option.cloneNode(true));
+    let groupOptions = [...field('group_folder_id').options].map(option => option.cloneNode(true));
+    let typeOptions = [...field('target_folder_id').options].map(option => option.cloneNode(true));
     const filterOptions = (select, options, predicate) => {
         const selected = select.value;
         select.replaceChildren(...options.filter(option => !option.value || predicate(option)).map(option => option.cloneNode(true)));
         select.value = [...select.options].some(option => option.value === selected) ? selected : '';
     };
     const updateFolders = () => {
-        filterOptions(field('group_folder_id'), groupOptions, option => !option.dataset.year || option.dataset.year === field('year').value);
-        filterOptions(field('target_folder_id'), typeOptions, option => option.dataset.parent === field('group_folder_id').value || option.value === field('group_folder_id').value);
+        const year = field('year').value;
+        filterOptions(field('group_folder_id'), groupOptions, option => !option.dataset.year || option.dataset.year === year);
+        const group = field('group_folder_id').value;
+        filterOptions(field('target_folder_id'), typeOptions, option => option.dataset.year === year && option.dataset.group === group);
+        if (! field('target_folder_id').value && field('target_folder_id').options.length === 2) {
+            field('target_folder_id').selectedIndex = 1;
+        }
     };
+    const refreshFoldersButton = document.getElementById('refresh-upload-folders');
+    refreshFoldersButton?.addEventListener('click', async () => {
+        const status = document.getElementById('folder-refresh-status');
+        refreshFoldersButton.disabled = true;
+        status.textContent = 'Memuat pilihan folder…';
+        try {
+            const response = await fetch(refreshFoldersButton.dataset.url, { credentials: 'same-origin', headers: { Accept: 'text/html' } });
+            if (! response.ok || response.redirected) throw new Error('Folder tidak tersedia');
+            const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const groups = page.querySelector('#group_folder_id');
+            const targets = page.querySelector('#target_folder_id');
+            const years = page.querySelector('#year');
+            if (! groups || ! targets || ! years) throw new Error('Pilihan folder tidak tersedia');
+            groupOptions = [...groups.options];
+            typeOptions = [...targets.options];
+            filterOptions(field('year'), [...years.options], () => true);
+            updateFolders();
+            refreshPreview();
+            status.textContent = 'Pilihan folder diperbarui. Pilih folder baru Anda.';
+        } catch {
+            status.textContent = 'Folder belum dapat diperbarui. Pastikan sesi masih aktif dan coba kembali.';
+        } finally {
+            refreshFoldersButton.disabled = false;
+        }
+    });
     const updateTiming = () => {
         uploadForm.querySelectorAll('[data-timing-field]').forEach(container => {
             const enabled = container.dataset.timingField === field('timing').value;
@@ -82,7 +112,11 @@ if (uploadForm) {
         if (event.target.name === 'timing') updateTiming();
         refreshPreview();
     });
-    uploadForm.addEventListener('change', refreshPreview);
+    uploadForm.addEventListener('change', event => {
+        if (['year', 'group_folder_id'].includes(event.target.name)) updateFolders();
+        if (event.target.name === 'timing') updateTiming();
+        refreshPreview();
+    });
     uploadForm.addEventListener('submit', event => {
         if (uploadForm.dataset.submitting) { event.preventDefault(); return; }
         uploadForm.dataset.submitting = 'true';

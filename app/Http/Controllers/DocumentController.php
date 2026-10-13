@@ -7,6 +7,7 @@ use App\Http\Requests\ListDocumentsRequest;
 use App\Http\Requests\StoreDocumentRequest;
 use App\Models\Document;
 use App\Models\Folder;
+use App\Services\DocumentMetadataService;
 use App\Services\DocumentUploadService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -37,11 +38,24 @@ class DocumentController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(DocumentMetadataService $metadata): View
     {
         Gate::authorize('create', Document::class);
 
-        return view('documents.create', ['years' => Folder::query()->where('is_active', true)->where('is_temporary', false)->whereNotNull('year')->orderByDesc('year')->pluck('year')->unique(), 'folders' => Folder::query()->where('is_active', true)->where('is_temporary', false)->whereNotNull('year')->orderBy('year')->orderBy('sort_order')->get(['id', 'parent_id', 'year', 'code', 'name', 'folder_type', 'is_temporary', 'is_custom'])]);
+        $folders = Folder::query()
+            ->with('parent.parent.parent.parent')
+            ->where('is_active', true)
+            ->where('is_temporary', false)
+            ->whereNotNull('year')
+            ->orderBy('year')
+            ->orderBy('sort_order')
+            ->get();
+        $targets = $folders->filter(fn (Folder $folder): bool => $metadata->uploadGroup($folder) !== null);
+        $targetGroups = $targets->mapWithKeys(fn (Folder $folder): array => [$folder->id => $metadata->uploadGroup($folder)->id]);
+        $groups = $folders->whereIn('id', $targetGroups->values());
+        $years = $groups->pluck('year')->unique()->sortDesc()->values();
+
+        return view('documents.create', compact('years', 'groups', 'targets', 'targetGroups'));
     }
 
     public function store(StoreDocumentRequest $request, DocumentUploadService $uploads): RedirectResponse

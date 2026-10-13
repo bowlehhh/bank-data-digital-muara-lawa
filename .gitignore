@@ -21,6 +21,9 @@
 /storage/*.key
 /storage/pail
 /vendor
+build.zip
+vendor.zip
+muara-lawa-deploy.zip
 _ide_helper.php
 Homestead.json
 Homestead.yaml

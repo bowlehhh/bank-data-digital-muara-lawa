@@ -34,13 +34,10 @@ class FolderController extends Controller
         $folder = DB::transaction(function () use ($data, $name, $code, $fullCode, $request): Folder {
             $folder = Folder::create([
                 'parent_id' => $data['parent_id'] ?? null, 'year' => $data['year'], 'code' => $fullCode,
-                'name' => $name, 'description' => $data['description'] ?? null, 'folder_type' => $data['parent_id'] ? 'document_type' : 'group',
+                'name' => $name, 'description' => $data['description'] ?? null, 'folder_type' => ($data['parent_id'] ?? null) ? 'document_type' : 'group',
                 'sort_order' => (int) $code, 'is_official' => false, 'is_custom' => true,
                 'created_by' => $request->user()->id, 'is_temporary' => false, 'is_active' => true,
             ]);
-            if (! Storage::disk('documents')->makeDirectory($data['year'].'/'.$fullCode)) {
-                throw new \RuntimeException('Direktori folder gagal dibuat.');
-            }
 
             return $folder;
         });

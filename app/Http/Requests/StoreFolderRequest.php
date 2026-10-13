@@ -27,12 +27,14 @@ class StoreFolderRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
             $parent = Folder::query()->find($this->integer('parent_id'));
             $name = self::normalizeName((string) $this->input('name'));
-            $code = $this->nextCode($parent);
 
-            if ($parent && (! $parent->is_active || $parent->is_temporary || $parent->year !== null && $parent->year !== $this->integer('year'))) {
-                $validator->errors()->add('parent_id', 'Folder induk tidak aktif atau tidak sesuai tahun.');
+            if ($parent && (! $parent->is_active || $parent->is_temporary || $parent->year !== $this->integer('year'))) {
+                $validator->errors()->add('parent_id', 'Pilih folder induk aktif dengan tahun yang sama, selain Arsip Sementara.');
             }
             if ($parent && $this->depth($parent) >= 5) {
                 $validator->errors()->add('parent_id', 'Kedalaman folder maksimal lima tingkat.');
@@ -63,17 +65,5 @@ class StoreFolderRequest extends FormRequest
         }
 
         return $depth;
-    }
-
-    private function nextCode(?Folder $parent): string
-    {
-        $used = Folder::query()->where('parent_id', $parent?->id)->where('year', $this->integer('year'))->pluck('code')->map(fn ($code) => (int) substr($code, 0, 2))->filter(fn ($code) => $code > 0 && $code < 99);
-        for ($code = 1; $code <= 98; $code++) {
-            if (! $used->contains($code)) {
-                return str_pad((string) $code, 2, '0', STR_PAD_LEFT);
-            }
-        }
-
-        return '00';
     }
 }
