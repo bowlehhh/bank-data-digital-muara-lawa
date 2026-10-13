@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\Folder;
-use Illuminate\Support\Number;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -18,9 +17,23 @@ class DashboardController extends Controller
             'documentTotal' => (clone $documents)->count(),
             'currentYearTotal' => (clone $documents)->where('year', now()->year)->count(),
             'temporaryTotal' => (clone $documents)->whereHas('folder', fn ($query) => $query->where('is_temporary', true))->count(),
-            'storageSize' => Number::fileSize($bytes),
+            'storageSize' => $this->formatFileSize($bytes),
             'recentDocuments' => (clone $documents)->with('folder')->latest('id')->limit(5)->get(),
             'folderCount' => Folder::query()->where('is_active', true)->count(),
         ]);
+    }
+
+    private function formatFileSize(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        $size = $bytes;
+        $unitIndex = 0;
+
+        while (abs($size) / 1024 > 0.9 && $unitIndex < count($units) - 1) {
+            $size /= 1024;
+            $unitIndex++;
+        }
+
+        return number_format(round($size, 0, PHP_ROUND_HALF_EVEN), 0, '.', ',').' '.$units[$unitIndex];
     }
 }
