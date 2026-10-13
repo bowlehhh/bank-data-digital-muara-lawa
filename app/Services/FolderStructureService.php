@@ -25,8 +25,7 @@ class FolderStructureService
     private function createGroups(array $groups, ?int $year): void
     {
         foreach ($groups as $code => $children) {
-            $temporary = $code === '99_ARSIP_SEMENTARA';
-            $parent = $this->createFolder($code, $year, null, $temporary ? FolderType::Temporary : FolderType::Group);
+            $parent = $this->createFolder($code, $year, null, FolderType::Group);
             foreach ($children as $childCode) {
                 $this->createFolder($childCode, $year, $parent->id, FolderType::DocumentType);
             }
@@ -44,7 +43,7 @@ class FolderStructureService
             'folder_type' => $type,
             'sort_order' => (int) substr($code, 0, 2),
             'is_official' => true,
-            'is_temporary' => $type === FolderType::Temporary,
+            'is_temporary' => false,
             'is_active' => true,
         ]);
     }

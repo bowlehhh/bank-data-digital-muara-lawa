@@ -19,7 +19,7 @@ class FolderController extends Controller
 
     public function create(): View
     {
-        $folders = Folder::query()->where('is_active', true)->orderBy('year')->orderBy('sort_order')->get();
+        $folders = Folder::query()->where('is_active', true)->where('is_temporary', false)->orderBy('year')->orderBy('sort_order')->get();
 
         return view('folders.create', compact('folders'));
     }
@@ -62,7 +62,7 @@ class FolderController extends Controller
 
     public function show(Folder $folder): View
     {
-        abort_unless($folder->is_active && $folder->is_official, 404);
+        abort_unless(! $folder->is_temporary && $folder->is_active && $folder->is_official, 404);
         $folder->load(['parent', 'children'])->loadCount('documents');
         $documents = $folder->documents()->with('files')->latest('id')->paginate(15)->withQueryString();
 
@@ -71,14 +71,14 @@ class FolderController extends Controller
 
     public function edit(Folder $folder): View
     {
-        abort_unless($folder->is_active, 404);
+        abort_unless(! $folder->is_temporary && $folder->is_active, 404);
 
         return view('folders.edit', compact('folder'));
     }
 
     public function update(UpdateFolderRequest $request, Folder $folder): RedirectResponse
     {
-        abort_unless($folder->is_active, 404);
+        abort_unless(! $folder->is_temporary && $folder->is_active, 404);
         $folder->update(['name' => StoreFolderRequest::normalizeName($request->string('name')->toString()), 'description' => $request->input('description')]);
 
         return redirect()->route('documents.index', ['folder_id' => $folder->id])->with('status', 'Folder berhasil diperbarui.');
@@ -86,7 +86,7 @@ class FolderController extends Controller
 
     public function destroy(Folder $folder): RedirectResponse
     {
-        abort_unless($folder->is_active, 404);
+        abort_unless(! $folder->is_temporary && $folder->is_active, 404);
         if ($folder->children()->exists() || $folder->documents()->exists()) {
             return back()->withErrors(['folder' => 'Folder tidak dapat dihapus karena masih berisi subfolder atau dokumen.']);
         }

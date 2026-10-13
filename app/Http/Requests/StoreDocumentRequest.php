@@ -32,7 +32,7 @@ class StoreDocumentRequest extends FormRequest
             'document_date' => ['nullable', 'required_if:timing,date', 'prohibited_unless:timing,date', 'date_format:Y-m-d'],
             'version_code' => ['nullable', 'string', 'max:20'],
             'file_role' => ['required', Rule::enum(FileRole::class)],
-            'file' => ['bail', 'required', 'file', 'min:1', 'max:'.config('documents.max_size_kb'), new DocumentUploadFile],
+            'file' => ['bail', 'required', 'file', 'min:1', 'max:'.config('documents.max_size_kb'), app(DocumentUploadFile::class)],
         ];
     }
 

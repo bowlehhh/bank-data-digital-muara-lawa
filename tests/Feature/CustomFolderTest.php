@@ -64,10 +64,9 @@ class CustomFolderTest extends TestCase
         $this->assertSame('group', $folder->folder_type->value);
     }
 
-    public function test_archive_has_a_dedicated_route(): void
+    public function test_archive_route_is_removed(): void
     {
-        $this->actingAs($this->admin)->get('/arsip-sementara')->assertOk()->assertSee('Arsip Sementara');
-        $this->assertNotSame(route('documents.index'), route('documents.archive'));
+        $this->actingAs($this->admin)->get('/arsip-sementara')->assertNotFound();
     }
 
     public function test_custom_folder_can_be_renamed_and_deleted_when_empty(): void

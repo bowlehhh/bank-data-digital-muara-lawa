@@ -19,8 +19,8 @@ class DocumentController extends Controller
     public function index(ListDocumentsRequest $request): View
     {
         $data = $request->validated();
-        $activeFolder = isset($data['folder_id']) ? Folder::query()->with('parent')->find($data['folder_id']) : null;
-        $tree = Folder::query()->with(['children.children.children.children'])->withCount(['children', 'documents'])->whereNull('parent_id')->where('is_active', true)->orderBy('year')->orderBy('sort_order')->get();
+        $activeFolder = isset($data['folder_id']) ? Folder::query()->with('parent')->where('is_temporary', false)->find($data['folder_id']) : null;
+        $tree = Folder::query()->with(['children.children.children.children'])->withCount(['children', 'documents'])->whereNull('parent_id')->where('is_active', true)->where('is_temporary', false)->orderBy('year')->orderBy('sort_order')->get();
         $query = Document::query()->with(['folder', 'currentRevision', 'files']);
         if ($term = $data['q'] ?? null) {
             $like = '%'.$term.'%';
@@ -28,12 +28,12 @@ class DocumentController extends Controller
         }
 
         return view('documents.index', [
-            'documents' => $query->when($data['year'] ?? null, fn ($q, $value) => $q->where('year', $value))->when($data['folder_id'] ?? null, fn ($q, $value) => $q->where('folder_id', $value))->when($data['period'] ?? null, fn ($q, $value) => $q->where('period', $value))->when($data['version_code'] ?? null, fn ($q, $value) => $q->where('version_code', $value))->when($data['extension'] ?? null, fn ($q, $value) => $q->whereHas('files', fn ($files) => $files->where('extension', $value)))->when(($data['location'] ?? null) === 'temporary', fn ($q) => $q->whereHas('folder', fn ($folder) => $folder->where('is_temporary', true)))->when(($data['location'] ?? null) === 'stored', fn ($q) => $q->whereHas('folder', fn ($folder) => $folder->where('is_temporary', false)))->orderBy('created_at', ($data['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->orderByDesc('id')->paginate(15)->withQueryString(),
+            'documents' => $query->when($data['year'] ?? null, fn ($q, $value) => $q->where('year', $value))->when($data['folder_id'] ?? null, fn ($q, $value) => $q->where('folder_id', $value))->when($data['period'] ?? null, fn ($q, $value) => $q->where('period', $value))->when($data['version_code'] ?? null, fn ($q, $value) => $q->where('version_code', $value))->when($data['extension'] ?? null, fn ($q, $value) => $q->whereHas('files', fn ($files) => $files->where('extension', $value)))->orderBy('created_at', ($data['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->orderByDesc('id')->paginate(15)->withQueryString(),
             'years' => Document::query()->select('year')->distinct()->orderByDesc('year')->pluck('year'),
-            'folders' => Folder::query()->where('is_active', true)->orderBy('year')->orderBy('sort_order')->get(),
+            'folders' => Folder::query()->where('is_active', true)->where('is_temporary', false)->orderBy('year')->orderBy('sort_order')->get(),
             'tree' => $tree,
             'activeFolder' => $activeFolder,
-            'subfolders' => $activeFolder?->children()->where('is_active', true)->withCount(['children', 'documents'])->orderBy('sort_order')->get() ?? collect(),
+            'subfolders' => $activeFolder?->children()->where('is_active', true)->where('is_temporary', false)->withCount(['children', 'documents'])->orderBy('sort_order')->get() ?? collect(),
         ]);
     }
 
@@ -41,7 +41,7 @@ class DocumentController extends Controller
     {
         Gate::authorize('create', Document::class);
 
-        return view('documents.create', ['years' => Folder::query()->where('is_active', true)->whereNotNull('year')->orderByDesc('year')->pluck('year')->unique(), 'folders' => Folder::query()->where('is_active', true)->whereNotNull('year')->orderBy('year')->orderBy('sort_order')->get(['id', 'parent_id', 'year', 'code', 'name', 'folder_type', 'is_temporary', 'is_custom'])]);
+        return view('documents.create', ['years' => Folder::query()->where('is_active', true)->where('is_temporary', false)->whereNotNull('year')->orderByDesc('year')->pluck('year')->unique(), 'folders' => Folder::query()->where('is_active', true)->where('is_temporary', false)->whereNotNull('year')->orderBy('year')->orderBy('sort_order')->get(['id', 'parent_id', 'year', 'code', 'name', 'folder_type', 'is_temporary', 'is_custom'])]);
     }
 
     public function store(StoreDocumentRequest $request, DocumentUploadService $uploads): RedirectResponse
@@ -70,7 +70,7 @@ class DocumentController extends Controller
     {
         abort_unless(Gate::allows('view', $document), 404);
         $document->load(['folder.parent', 'targetFolder.parent', 'creator', 'files', 'revisions.files', 'revisions.submitter']);
-        $moveFolders = Folder::query()->with('parent.parent.parent.parent')->where('year', $document->year)->where('is_active', true)->orderBy('sort_order')->get();
+        $moveFolders = Folder::query()->with('parent.parent.parent.parent')->where('year', $document->year)->where('is_active', true)->where('is_temporary', false)->orderBy('sort_order')->get();
 
         return view('documents.show', compact('document', 'moveFolders'));
     }

@@ -14,5 +14,6 @@ return [
         'png' => ['image/png'],
     ],
     'version_optional_types' => ['SURAT-MASUK', 'SURAT-KELUAR', 'BPK', 'INSPEKTORAT', 'BPKP'],
+    'versions' => [...array_map(fn (int $version): string => sprintf('V%02d', $version), range(1, 99)), 'FINAL', 'FINAL_TTD'],
     'periods' => ['JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER', 'TRIWULAN-I', 'TRIWULAN-II', 'TRIWULAN-III', 'TRIWULAN-IV', 'SEMESTER-I', 'SEMESTER-II', 'TAHUNAN'],
 ];

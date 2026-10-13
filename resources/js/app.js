@@ -31,7 +31,6 @@ document.querySelector('[data-toggle-password]')?.addEventListener('click', (eve
 const uploadForm = document.getElementById('document-upload');
 if (uploadForm) {
     const field = (name) => uploadForm.elements.namedItem(name);
-    const storageMode = document.getElementById('storage_mode');
     const groupOptions = [...field('group_folder_id').options].map(option => option.cloneNode(true));
     const typeOptions = [...field('target_folder_id').options].map(option => option.cloneNode(true));
     const filterOptions = (select, options, predicate) => {
@@ -41,23 +40,7 @@ if (uploadForm) {
     };
     const updateFolders = () => {
         filterOptions(field('group_folder_id'), groupOptions, option => !option.dataset.year || option.dataset.year === field('year').value);
-        filterOptions(field('target_folder_id'), typeOptions, option => option.dataset.parent === field('group_folder_id').value || option.value === field('group_folder_id').value || option.dataset.temporary === '1');
-    };
-    const updateStorageMode = () => {
-        if (!storageMode) return;
-        const archiveId = storageMode.dataset.archiveId;
-        if (storageMode.value === 'temporary' && archiveId) {
-            field('group_folder_id').value = archiveId;
-            updateFolders();
-            field('target_folder_id').value = archiveId;
-            field('group_folder_id').setAttribute('aria-disabled', 'true');
-            field('target_folder_id').setAttribute('aria-disabled', 'true');
-        } else {
-            field('group_folder_id').removeAttribute('aria-disabled');
-            field('target_folder_id').removeAttribute('aria-disabled');
-            updateFolders();
-        }
-        refreshPreview();
+        filterOptions(field('target_folder_id'), typeOptions, option => option.dataset.parent === field('group_folder_id').value || option.value === field('group_folder_id').value);
     };
     const updateTiming = () => {
         uploadForm.querySelectorAll('[data-timing-field]').forEach(container => {
@@ -100,8 +83,6 @@ if (uploadForm) {
         refreshPreview();
     });
     uploadForm.addEventListener('change', refreshPreview);
-    storageMode?.addEventListener('change', updateStorageMode);
-    updateStorageMode();
     uploadForm.addEventListener('submit', event => {
         if (uploadForm.dataset.submitting) { event.preventDefault(); return; }
         uploadForm.dataset.submitting = 'true';

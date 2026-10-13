@@ -31,7 +31,7 @@ class StoreFolderRequest extends FormRequest
             $name = self::normalizeName((string) $this->input('name'));
             $code = $this->nextCode($parent);
 
-            if ($parent && (! $parent->is_active || $parent->year !== null && $parent->year !== $this->integer('year'))) {
+            if ($parent && (! $parent->is_active || $parent->is_temporary || $parent->year !== null && $parent->year !== $this->integer('year'))) {
                 $validator->errors()->add('parent_id', 'Folder induk tidak aktif atau tidak sesuai tahun.');
             }
             if ($parent && $this->depth($parent) >= 5) {

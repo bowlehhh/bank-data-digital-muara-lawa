@@ -19,7 +19,7 @@ class ListDocumentsRequest extends FormRequest
             'q' => ['nullable', 'string', 'max:120'], 'year' => ['nullable', 'integer', 'between:2026,9999'],
             'folder_id' => ['nullable', 'integer'], 'period' => ['nullable', 'string', 'max:30'],
             'version_code' => ['nullable', 'string', 'max:20'], 'extension' => ['nullable', 'string', 'max:10'],
-            'location' => ['nullable', Rule::in(['stored', 'temporary'])], 'sort' => ['nullable', Rule::in(['newest', 'oldest'])],
+            'sort' => ['nullable', Rule::in(['newest', 'oldest'])],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
     }

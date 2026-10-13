@@ -50,7 +50,7 @@
 
     <section class="panel p-5 sm:p-7">
         <h2 class="text-lg font-semibold">Pindahkan folder</h2>
-        <p class="mt-1 text-sm text-muted">Gunakan ini untuk menata dokumen dari Arsip Sementara atau memindahkannya ke folder resmi lain.</p>
+        <p class="mt-1 text-sm text-muted">Pindahkan dokumen ke folder tujuan yang sesuai.</p>
         <form action="{{ route('documents.move', $document) }}" method="POST" class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
             @csrf
             <x-field name="folder_id" label="Folder tujuan" class="grow">
@@ -70,6 +70,6 @@
             @method('DELETE')
             <button class="button button-secondary text-primary"><x-icon name="trash" />Pindahkan ke sampah</button>
         </form>
-        <a href="{{ route('documents.index') }}" class="button button-secondary"><x-icon name="document" />Semua Dokumen</a>
+        <a href="{{ route('documents.index') }}" class="button button-secondary"><x-icon name="document" />Download File</a>
     </section>
 </x-layout>

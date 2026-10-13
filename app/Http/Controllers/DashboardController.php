@@ -16,10 +16,9 @@ class DashboardController extends Controller
         return view('dashboard', [
             'documentTotal' => (clone $documents)->count(),
             'currentYearTotal' => (clone $documents)->where('year', now()->year)->count(),
-            'temporaryTotal' => (clone $documents)->whereHas('folder', fn ($query) => $query->where('is_temporary', true))->count(),
             'storageSize' => $this->formatFileSize($bytes),
             'recentDocuments' => (clone $documents)->with('folder')->latest('id')->limit(5)->get(),
-            'folderCount' => Folder::query()->where('is_active', true)->count(),
+            'folderCount' => Folder::query()->where('is_active', true)->where('is_temporary', false)->count(),
         ]);
     }
 

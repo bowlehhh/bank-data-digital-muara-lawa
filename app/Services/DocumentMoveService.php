@@ -12,8 +12,8 @@ class DocumentMoveService
 {
     public function move(Document $document, Folder $folder): void
     {
-        if (! $folder->is_active || $folder->year !== $document->year
-            || (! $folder->is_temporary && $folder->parent_id === null && ! $folder->is_custom)) {
+        if (! $folder->is_active || $folder->is_temporary || $folder->year !== $document->year
+            || ($folder->parent_id === null && ! $folder->is_custom)) {
             throw new RuntimeException('Folder tujuan tidak tersedia untuk tahun dokumen.');
         }
         foreach ($document->files as $file) {

@@ -7,7 +7,6 @@ use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\DocumentFilenamePreviewController;
 use App\Http\Controllers\DocumentMoveController;
 use App\Http\Controllers\FolderController;
-use App\Http\Controllers\TemporaryArchiveController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -33,7 +32,6 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::put('/folders/{folder}', [FolderController::class, 'update'])->name('folders.update');
     Route::delete('/folders/{folder}', [FolderController::class, 'destroy'])->name('folders.destroy');
     Route::get('/folders/{folder}', [FolderController::class, 'show'])->name('folders.show');
-    Route::get('/arsip-sementara', TemporaryArchiveController::class)->name('documents.archive');
     Route::get('/dashboard', DashboardController::class)->middleware('can:view-dashboard')->name('dashboard');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

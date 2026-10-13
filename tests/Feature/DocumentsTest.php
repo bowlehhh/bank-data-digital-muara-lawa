@@ -41,12 +41,13 @@ class DocumentsTest extends TestCase
         Storage::disk('documents')->assertExists($document->files()->sole()->path);
     }
 
-    public function test_archive_folder_is_available_as_optional_target(): void
+    public function test_archive_folder_is_hidden_and_rejected_as_upload_target(): void
     {
-        $folder = Folder::query()->where('is_temporary', true)->firstOrFail();
-        $this->actingAs($this->admin)->get('/documents/create')->assertOk()->assertSee('Arsip Sementara');
-        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertRedirect();
-        $this->assertSame($folder->id, Document::query()->sole()->folder_id);
+        $folder = Folder::factory()->create(['code' => '99_ARSIP_SEMENTARA', 'is_temporary' => true, 'folder_type' => 'temporary', 'parent_id' => null, 'year' => 2026]);
+        $this->actingAs($this->admin)->get('/documents/create')->assertOk()->assertDontSee('Arsip Sementara')->assertDontSee('99_ARSIP_SEMENTARA');
+        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertRedirect()->assertSessionHasErrors('target_folder_id');
+        $this->assertDatabaseCount('documents', 0);
+        $this->assertSame([], Storage::disk('documents')->allFiles());
     }
 
     public function test_duplicate_checksum_is_rejected(): void
@@ -56,6 +57,35 @@ class DocumentsTest extends TestCase
         $this->actingAs($this->admin)->post('/documents', $payload)->assertRedirect();
         $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertSessionHasErrors('file');
         $this->assertDatabaseCount('documents', 1);
+    }
+
+    public function test_upload_version_is_a_dropdown_and_preserves_selected_value_after_error(): void
+    {
+        $this->withoutVite();
+        $folder = Folder::query()->where('code', '02_RENJA')->sole();
+        $payload = [...$this->payload($folder->id), 'version_code' => 'V25', 'title' => ''];
+
+        $response = $this->actingAs($this->admin)->from('/documents/create')->followingRedirects()->post('/documents', $payload);
+
+        $response->assertOk()->assertSee('<select id="version_code" name="version_code"', false)
+            ->assertSee('<option value="V25" selected>', false)->assertSee('FINAL_TTD')->assertDontSee('<datalist', false);
+        $this->assertDatabaseCount('documents', 0);
+    }
+
+    public function test_existing_archive_documents_remain_downloadable_and_cannot_move_back_to_archive(): void
+    {
+        $this->withoutVite();
+        $folder = Folder::query()->where('code', '02_RENJA')->sole();
+        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertSessionHasNoErrors();
+        $document = Document::query()->sole();
+        $archive = Folder::factory()->create(['code' => '99_ARSIP_SEMENTARA', 'name' => 'ARSIP SEMENTARA', 'is_temporary' => true, 'folder_type' => 'temporary', 'parent_id' => null, 'year' => 2026]);
+        $document->update(['folder_id' => $archive->id]);
+
+        $this->get('/documents')->assertOk()->assertSee('Download File')->assertSee('Laporan Keuangan')->assertDontSee('ARSIP SEMENTARA');
+        $this->get(route('documents.download', $document->files()->sole()))->assertOk()->assertDownload();
+        $this->post(route('documents.move', $document), ['folder_id' => $archive->id])->assertRedirect()->assertSessionHasErrors('folder_id');
+        $this->assertSame($archive->id, $document->fresh()->folder_id);
+        Storage::disk('documents')->assertExists($document->files()->sole()->path);
     }
 
     public function test_documents_can_be_searched_and_filtered(): void
@@ -78,6 +108,6 @@ class DocumentsTest extends TestCase
 
     public function test_all_official_folders_are_seeded(): void
     {
-        $this->assertSame(48, Folder::query()->where('is_official', true)->count());
+        $this->assertSame(47, Folder::query()->where('is_official', true)->count());
     }
 }

@@ -11,6 +11,6 @@
             <x-field name="description" label="Deskripsi opsional" class="sm:col-span-2"><textarea id="description" name="description" rows="3" class="field">{{ old('description') }}</textarea></x-field>
         </div>
         <div class="rounded-lg border border-border bg-background p-4"><p class="text-sm font-semibold">Preview folder</p><p class="mt-2 text-sm text-primary">Nomor akan ditentukan otomatis setelah tahun dan induk dipilih. Hasilnya akan mengikuti format <strong>08_DOKUMEN_KEGIATAN_KECAMATAN</strong>.</p></div>
-        <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row"><button class="button button-primary"><x-icon name="folder" />Buat Folder</button><a href="{{ route('documents.index') }}" class="button button-secondary">Semua Dokumen</a></div>
+        <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row"><button class="button button-primary"><x-icon name="folder" />Buat Folder</button><a href="{{ route('documents.index') }}" class="button button-secondary">Download File</a></div>
     </form>
 </x-layout>

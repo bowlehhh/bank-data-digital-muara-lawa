@@ -58,6 +58,6 @@ class Document extends Model
 
     public function getLocationLabelAttribute(): string
     {
-        return $this->folder?->is_temporary ? 'Arsip Sementara' : 'Tersimpan';
+        return 'Tersimpan';
     }
 }

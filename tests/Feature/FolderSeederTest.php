@@ -10,13 +10,13 @@ use Tests\TestCase;
 
 class FolderSeederTest extends TestCase
 {
-    public function test_official_2026_structure_has_exact_groups_children_and_temporary_archive(): void
+    public function test_official_2026_structure_has_exact_groups_and_children_without_temporary_archive(): void
     {
         $this->seed(FolderSeeder::class);
 
-        $this->assertDatabaseCount('folders', 48);
+        $this->assertDatabaseCount('folders', 47);
         $this->assertSame(5, Folder::query()->whereNull('year')->count());
-        $this->assertSame(43, Folder::query()->where('year', 2026)->count());
+        $this->assertSame(42, Folder::query()->where('year', 2026)->count());
         $expected = [
             '00_PEDOMAN_DAN_SOP' => ['01_SOP', '02_STANDAR_STRUKTUR_FOLDER', '03_STANDAR_PENAMAAN_FILE', '04_DAFTAR_INVENTARIS'],
             '01_PERENCANAAN_DAN_PROGRAM' => ['01_RENSTRA', '02_RENJA', '03_RKT', '04_PROGRAM_DAN_KEGIATAN', '05_DATA_PENDUKUNG_PERENCANAAN'],
@@ -26,7 +26,6 @@ class FolderSeederTest extends TestCase
             '05_AKUNTABILITAS_DAN_PELAPORAN' => ['01_SAKIP', '02_LKJIP', '03_LPPD', '04_MONITORING_DAN_EVALUASI', '05_LAPORAN_LAINNYA'],
             '06_PEMERIKSAAN_DAN_TINDAK_LANJUT' => ['01_BPK', '02_INSPEKTORAT', '03_BPKP', '04_TINDAK_LANJUT'],
             '07_DATA_PENDUKUNG' => ['01_SURAT_MASUK', '02_SURAT_KELUAR', '03_NOTULEN', '04_DOKUMENTASI', '05_DATA_LAINNYA'],
-            '99_ARSIP_SEMENTARA' => [],
         ];
         $roots = Folder::query()->whereNull('parent_id')->with('children')->orderBy('code')->get();
         $this->assertSame(array_keys($expected), $roots->pluck('code')->all());
@@ -38,11 +37,8 @@ class FolderSeederTest extends TestCase
                 $this->assertSame(FolderType::DocumentType, $child->folder_type);
             }
         }
-        $archive = Folder::query()->where('is_temporary', true)->sole();
-        $this->assertSame('99_ARSIP_SEMENTARA', $archive->code);
-        $this->assertSame(2026, $archive->year);
-        $this->assertSame(FolderType::Temporary, $archive->folder_type);
-        $this->assertSame(48, Folder::query()->where('is_official', true)->where('is_active', true)->count());
+        $this->assertFalse(Folder::query()->where('is_temporary', true)->exists());
+        $this->assertSame(47, Folder::query()->where('is_official', true)->where('is_active', true)->count());
     }
 
     public function test_reseeding_preserves_folder_ids_and_existing_changes(): void

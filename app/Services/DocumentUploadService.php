@@ -17,16 +17,17 @@ use Throwable;
 
 class DocumentUploadService
 {
-    public function __construct(private DocumentFilenameService $filenames, private DocumentChecksumService $checksums, private DocumentMetadataService $metadata) {}
+    public function __construct(private DocumentFilenameService $filenames, private DocumentChecksumService $checksums, private DocumentMetadataService $metadata, private DocumentFileInspector $inspector) {}
 
     /** @param array<string, mixed> $data */
     public function upload(User $user, array $data, UploadedFile $file): Document
     {
         Gate::forUser($user)->authorize('create', Document::class);
+        $mime = $this->inspector->inspect($file);
         $checksum = $this->checksums->calculate($file);
         $directory = null;
         try {
-            return DB::transaction(function () use ($user, $data, $file, $checksum, &$directory): Document {
+            return DB::transaction(function () use ($user, $data, $file, $checksum, $mime, &$directory): Document {
                 // Satu row tetap menyerialkan pengecekan checksum lintas pengguna/tahun sampai commit.
                 Folder::query()->where('code', '00_PEDOMAN_DAN_SOP')->whereNull('year')->whereNull('parent_id')->lockForUpdate()->firstOrFail();
                 $target = $this->metadata->target($data);
@@ -52,7 +53,7 @@ class DocumentUploadService
                 $revision->files()->create([
                     'document_id' => $document->id,
                     'original_filename' => $file->getClientOriginalName(), 'stored_filename' => $name, 'disk' => 'documents', 'path' => $path,
-                    'extension' => $extension, 'mime_type' => (new \finfo(FILEINFO_MIME_TYPE))->file($file->getRealPath()), 'size' => $file->getSize(),
+                    'extension' => $extension, 'mime_type' => $mime, 'size' => $file->getSize(),
                     'checksum_sha256' => $checksum, 'file_role' => $data['file_role'], 'uploaded_by' => $user->id,
                 ]);
                 $document->update(['current_revision_id' => $revision->id]);

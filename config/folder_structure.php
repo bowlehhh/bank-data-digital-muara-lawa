@@ -28,6 +28,5 @@ return [
         '07_DATA_PENDUKUNG' => [
             '01_SURAT_MASUK', '02_SURAT_KELUAR', '03_NOTULEN', '04_DOKUMENTASI', '05_DATA_LAINNYA',
         ],
-        '99_ARSIP_SEMENTARA' => [],
     ],
 ];

@@ -26,7 +26,7 @@ class AuthorizationTest extends TestCase
     public function test_dashboard_navigation_has_no_role_workflow_menu(): void
     {
         $response = $this->actingAs(User::factory()->create())->get('/dashboard')->assertOk();
-        $response->assertSee('Upload Dokumen')->assertSee('Semua Dokumen');
+        $response->assertSee('Upload Dokumen')->assertSee('Download File')->assertDontSee('Arsip Sementara');
         $response->assertDontSee('Antrean Verifikasi')->assertDontSee('Manajemen Pengguna');
     }
 

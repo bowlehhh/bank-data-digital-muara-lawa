@@ -27,7 +27,6 @@ class DashboardControllerTest extends TestCase
         $response->assertOk()->assertViewIs('dashboard')->assertViewHasAll([
             'documentTotal' => 0,
             'currentYearTotal' => 0,
-            'temporaryTotal' => 0,
             'storageSize' => '0 B',
             'folderCount' => 0,
         ])->assertViewHas('recentDocuments', fn (Collection $documents): bool => $documents->isEmpty())
@@ -95,9 +94,8 @@ class DashboardControllerTest extends TestCase
         $response->assertOk()->assertViewHasAll([
             'documentTotal' => 2,
             'currentYearTotal' => 1,
-            'temporaryTotal' => 1,
             'storageSize' => '2 KB',
-            'folderCount' => 2,
+            'folderCount' => 1,
         ])->assertViewHas('recentDocuments', fn (Collection $documents): bool => $documents->modelKeys() === [$temporaryDocument->id, $currentDocument->id]);
     }
 }

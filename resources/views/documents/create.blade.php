@@ -11,11 +11,8 @@
             <x-field name="group_folder_id" label="2. Kelompok dokumen">
                 <select id="group_folder_id" name="group_folder_id" class="field" required aria-describedby="group_folder_id-error"><option value="">Pilih kelompok dokumen</option>@foreach($folders->whereNull('parent_id') as $folder)<option value="{{ $folder->id }}" data-year="{{ $folder->year }}" @selected(old('group_folder_id') == $folder->id)>{{ $folder->name }}{{ $folder->year ? '' : ' (global)' }}</option>@endforeach</select>
             </x-field>
-            <x-field name="storage_mode" label="Lokasi penyimpanan" help="Pilih Arsip Sementara bila klasifikasi folder belum ditentukan.">
-                <select id="storage_mode" class="field" data-archive-id="{{ $folders->firstWhere('is_temporary', true)?->id }}"><option value="direct">Folder tujuan langsung</option><option value="temporary" @selected(old('target_folder_id') == $folders->firstWhere('is_temporary', true)?->id)>Arsip Sementara</option></select>
-            </x-field>
-            <x-field name="target_folder_id" label="3. Jenis dokumen / folder tujuan" class="sm:col-span-2" help="Folder 99 Arsip Sementara boleh dipilih bila klasifikasi belum diketahui.">
-                <div class="flex flex-col gap-2 sm:flex-row"><select id="target_folder_id" name="target_folder_id" class="field grow" required aria-describedby="target_folder_id-help target_folder_id-error"><option value="">Pilih jenis dokumen</option>@foreach($folders as $folder)<option value="{{ $folder->id }}" data-parent="{{ $folder->parent_id }}" data-temporary="{{ $folder->is_temporary ? '1' : '0' }}" @selected(old('target_folder_id') == $folder->id)>{{ $folder->year ? $folder->year.' · ' : '' }}{{ $folder->code }} · {{ $folder->name }}{{ $folder->is_temporary ? ' (Arsip Sementara)' : '' }}</option>@endforeach</select><a href="{{ route('folders.create') }}" class="button button-secondary whitespace-nowrap">Buat Folder Baru</a></div>
+            <x-field name="target_folder_id" label="3. Jenis dokumen / folder tujuan" class="sm:col-span-2" help="Pilih folder tujuan sesuai kelompok dan tahun dokumen.">
+                <div class="flex flex-col gap-2 sm:flex-row"><select id="target_folder_id" name="target_folder_id" class="field grow" required aria-describedby="target_folder_id-help target_folder_id-error"><option value="">Pilih jenis dokumen</option>@foreach($folders as $folder)<option value="{{ $folder->id }}" data-parent="{{ $folder->parent_id }}" @selected(old('target_folder_id') == $folder->id)>{{ $folder->year ? $folder->year.' · ' : '' }}{{ $folder->code }} · {{ $folder->name }}</option>@endforeach</select><a href="{{ route('folders.create') }}" class="button button-secondary whitespace-nowrap">Buat Folder Baru</a></div>
             </x-field>
             <x-field name="title" label="4. Judul atau uraian" class="sm:col-span-2" help="Contoh: Kecamatan Muara Lawa, Belanja ATK, atau Rapat Evaluasi. Hindari nama umum seperti BARU atau FIX.">
                 <input id="title" name="title" class="field" maxlength="120" value="{{ old('title') }}" required aria-describedby="title-help title-error">
@@ -30,7 +27,7 @@
                 <input type="date" id="document_date" name="document_date" value="{{ old('document_date') }}" class="field" aria-describedby="document_date-error">
             </x-field>
             <x-field name="version_code" label="6. Versi dokumen" help="V01, V02, V10, FINAL, atau FINAL_TTD. Boleh kosong hanya untuk surat dan dokumen pemeriksaan bertanggal.">
-                <input id="version_code" name="version_code" value="{{ old('version_code', 'V01') }}" list="version-options" class="field" maxlength="20" aria-describedby="version_code-help version_code-error"><datalist id="version-options">@foreach(['V01','V02','V03','V10','FINAL','FINAL_TTD'] as $version)<option value="{{ $version }}"></option>@endforeach</datalist>
+                <select id="version_code" name="version_code" class="field" aria-describedby="version_code-help version_code-error"><option value="" @selected(old('version_code', 'V01') === '')>Tanpa versi (surat / pemeriksaan bertanggal)</option>@foreach(config('documents.versions') as $version)<option value="{{ $version }}" @selected(old('version_code', 'V01') === $version)>{{ $version }}</option>@endforeach</select>
             </x-field>
             <x-field name="file_role" label="7. Jenis file" help="Menjelaskan peran file, terpisah dari versi dokumen.">
                 <select id="file_role" name="file_role" class="field" required aria-describedby="file_role-help file_role-error">@foreach(\App\FileRole::cases() as $role)<option value="{{ $role->value }}" @selected(old('file_role', 'editable') === $role->value)>{{ $role->label() }}</option>@endforeach</select>
@@ -43,6 +40,6 @@
             </x-field>
         </div>
         <div class="rounded-lg border border-border bg-background p-4"><h2 class="text-sm font-semibold">9. Preview nama file resmi</h2><p id="filename-preview" class="mt-2 break-all text-sm text-primary" aria-live="polite">Lengkapi informasi dan pilih file untuk melihat nama resmi.</p><p class="mt-2 text-xs text-muted">Nama akhir ditentukan server setelah isi file lolos validasi.</p></div>
-        <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row"><button type="submit" class="button button-primary" data-submit-upload><x-icon name="upload" /><span>Simpan Dokumen</span></button><a href="{{ route('documents.index') }}" class="button button-secondary"><x-icon name="document" />Semua Dokumen</a></div>
+        <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row"><button type="submit" class="button button-primary" data-submit-upload><x-icon name="upload" /><span>Simpan Dokumen</span></button><a href="{{ route('documents.index') }}" class="button button-secondary"><x-icon name="document" />Download File</a></div>
     </form>
 </x-layout>
