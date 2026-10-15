@@ -279,7 +279,7 @@ class DocumentUploadFileTest extends TestCase
         Storage::shouldReceive('disk')->with('documents')->twice()->andReturn($disk);
 
         $this->actingAs($user)->post('/documents', $payload)->assertRedirect()->assertSessionHasErrors([
-            'file' => 'Dokumen belum tersimpan karena terjadi gangguan. Silakan coba kembali.',
+            'file' => 'File gagal disimpan. Tidak ada dokumen baru yang dibuat. Silakan coba kembali.',
         ]);
 
         $this->assertDatabaseCount('documents', 0);

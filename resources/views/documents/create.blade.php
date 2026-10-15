@@ -1,8 +1,8 @@
 <x-layout title="Upload Dokumen">
     <div><h1 class="text-2xl font-bold">Upload Dokumen</h1><p class="mt-2 text-sm text-muted">Isi informasi dokumen dan pilih folder penyimpanannya.</p></div>
-    @if($errors->any())<div role="alert" class="rounded-lg border border-red-200 bg-primary-soft p-4 text-sm text-primary">Dokumen belum disimpan. Periksa pesan di bawah kolom dan pilih ulang file Anda.</div>@endif
+    @if($errors->any())<div role="alert" class="rounded-lg border border-red-200 bg-primary-soft p-4 text-sm text-primary"><p class="font-semibold">Dokumen belum disimpan. Perbaiki kolom berikut:</p><ul class="mt-2 list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     @if(session('duplicate_document_id'))<a class="button button-secondary self-start" href="{{ route('documents.show', session('duplicate_document_id')) }}"><x-icon name="document" />Lihat dokumen yang sudah tersimpan</a>@endif
-    <form id="document-upload" action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data" class="panel flex flex-col gap-6 p-5 sm:p-7" data-preview-url="{{ route('documents.filename-preview') }}">
+    <form id="document-upload" action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data" class="panel flex flex-col gap-6 p-5 sm:p-7" data-preview-url="{{ route('documents.filename-preview') }}" data-max-file-size="{{ config('documents.max_size_kb') * 1024 }}" data-max-file-size-label="{{ config('documents.max_size_kb') / 1024 }} MB">
         @csrf
         <div class="grid gap-5 sm:grid-cols-2">
             <x-field name="year" label="1. Tahun dokumen" help="Pilih tahun yang struktur foldernya sudah tersedia.">
@@ -33,7 +33,8 @@
                 <select id="file_role" name="file_role" class="field" required aria-describedby="file_role-help file_role-error">@foreach(\App\FileRole::cases() as $role)<option value="{{ $role->value }}" @selected(old('file_role', 'editable') === $role->value)>{{ $role->label() }}</option>@endforeach</select>
             </x-field>
             <x-field name="file" label="8. Pilih file" class="sm:col-span-2" :help="'Format: '.implode(', ', array_keys(config('documents.mime_types'))).'. Maksimal '.(config('documents.max_size_kb') / 1024).' MB.'">
-                <input type="file" id="file" name="file" class="field file:mr-3 file:rounded file:border-0 file:bg-primary-soft file:px-3 file:py-2 file:text-primary" required accept="{{ implode(',', array_map(fn ($ext) => '.'.$ext, array_keys(config('documents.mime_types')))) }}" aria-describedby="file-help file-error">
+                <input type="file" id="file" name="file" class="field file:mr-3 file:rounded file:border-0 file:bg-primary-soft file:px-3 file:py-2 file:text-primary" required accept="{{ implode(',', array_map(fn ($ext) => '.'.$ext, array_keys(config('documents.mime_types')))) }}" aria-describedby="file-help file-client-error file-error">
+                <p id="file-client-error" role="alert" class="mt-2 text-sm text-primary" hidden></p>
             </x-field>
             <x-field name="description" label="Keterangan tambahan (opsional)" class="sm:col-span-2">
                 <textarea id="description" name="description" rows="3" maxlength="5000" class="field" aria-describedby="description-error">{{ old('description') }}</textarea>

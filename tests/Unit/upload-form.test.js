@@ -25,7 +25,10 @@ function setup({ year = '2026', group = '10', target = '11', fetch } = {}) {
             option(''), option('11', { year: '2026', group: '10' }), option('12', { year: '2026', group: '10' }),
             option('21', { year: '2027', group: '20' }),
         ], target),
-        file: { files: [{ name: 'rencana.pdf' }] }, title: { value: '' }, description: { value: 'Rencana tahunan' },
+        file: {
+            files: [{ name: 'rencana.pdf', size: 1024 }],
+            setCustomValidity(message) { this.validationMessage = message; },
+        }, title: { value: '' }, description: { value: 'Rencana tahunan' },
         timing: { value: 'none' },
     };
     const label = { textContent: '' };
@@ -33,18 +36,19 @@ function setup({ year = '2026', group = '10', target = '11', fetch } = {}) {
     const status = { textContent: '' };
     const refreshButton = { dataset: { url: '/documents/create' }, addEventListener: (event, callback) => { refreshListeners[event] = callback; } };
     const form = {
-        dataset: {}, elements: { namedItem: name => fields[name] },
+        dataset: { maxFileSize: '52428800', maxFileSizeLabel: '50 MB' }, elements: { namedItem: name => fields[name] },
         addEventListener: (event, callback) => { listeners[event] = callback; },
         querySelectorAll: () => [], querySelector: () => button, setAttribute() {}, removeAttribute() {},
     };
-    const elements = { 'document-upload': form, 'filename-preview': {}, 'refresh-upload-folders': refreshButton, 'folder-refresh-status': status };
+    const fileClientError = { textContent: '', hidden: true };
+    const elements = { 'document-upload': form, 'file-client-error': fileClientError, 'filename-preview': {}, 'refresh-upload-folders': refreshButton, 'folder-refresh-status': status };
     runInNewContext(source, {
         document: { getElementById: id => elements[id], querySelector: () => null },
         window: { matchMedia: () => ({ addEventListener() {} }), addEventListener: (event, callback) => { windowListeners[event] = callback; } },
         clearTimeout, setTimeout, fetch,
         DOMParser: class { parseFromString(page) { return page; } },
     });
-    return { fields, form, listeners, windowListeners, button, refreshListeners, status };
+    return { fields, form, listeners, windowListeners, button, refreshListeners, status, fileClientError };
 }
 
 test('changing year clears the previous group and destination', () => {
@@ -85,6 +89,16 @@ test('double submit is blocked and back navigation restores submit', () => {
     windowListeners.pageshow();
     assert.equal(button.disabled, false);
     assert.equal(form.dataset.submitting, undefined);
+});
+
+test('file larger than configured maximum is blocked before submission', () => {
+    const { fields, listeners, fileClientError } = setup();
+    fields.file.files = [{ name: 'terlalu-besar.pdf', size: 52_428_801 }];
+
+    listeners.change({ target: { name: 'file' } });
+    assert.equal(fields.file.validationMessage, 'Ukuran file maksimal 50 MB. Pilih file lebih kecil.');
+    assert.equal(fileClientError.hidden, false);
+    assert.match(fileClientError.textContent, /50 MB/);
 });
 
 test('refresh includes newly created folders while retaining selected file and metadata', async () => {

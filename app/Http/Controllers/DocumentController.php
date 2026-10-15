@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DocumentFileStorageFailed;
+use App\Exceptions\DocumentMetadataStorageFailed;
 use App\Exceptions\DuplicateDocument;
 use App\Http\Requests\ListDocumentsRequest;
 use App\Http\Requests\StoreDocumentRequest;
@@ -71,6 +73,14 @@ class DocumentController extends Controller
             return $response;
         } catch (ValidationException $e) {
             throw $e;
+        } catch (DocumentFileStorageFailed $e) {
+            report($e);
+
+            return back()->withInput($request->except('file'))->withErrors(['file' => 'File gagal disimpan. Tidak ada dokumen baru yang dibuat. Silakan coba kembali.']);
+        } catch (DocumentMetadataStorageFailed $e) {
+            report($e);
+
+            return back()->withInput($request->except('file'))->withErrors(['file' => 'Metadata dokumen gagal disimpan. File yang baru diunggah telah dibersihkan. Silakan coba kembali.']);
         } catch (Throwable $e) {
             report($e);
 

@@ -237,7 +237,7 @@ class DocumentUploadValidationTest extends TestCase
 
         $this->from('/documents/create')->post('/documents', $this->payload($folder))
             ->assertRedirect('/documents/create')
-            ->assertSessionHasErrors(['file' => 'Dokumen belum tersimpan karena terjadi gangguan. Silakan coba kembali.'])
+            ->assertSessionHasErrors(['file' => 'File gagal disimpan. Tidak ada dokumen baru yang dibuat. Silakan coba kembali.'])
             ->assertSessionHasInput('title', 'Rencana Kecamatan Muara Lawa');
         $this->assertNothingStored();
     }
@@ -249,7 +249,8 @@ class DocumentUploadValidationTest extends TestCase
             throw new RuntimeException('Simulated metadata failure');
         });
         try {
-            $this->post('/documents', $this->payload($folder))->assertSessionHasErrors('file');
+            $this->post('/documents', $this->payload($folder))
+                ->assertSessionHasErrors(['file' => 'Metadata dokumen gagal disimpan. File yang baru diunggah telah dibersihkan. Silakan coba kembali.']);
             $this->assertNothingStored();
         } finally {
             DocumentFile::flushEventListeners();
@@ -290,6 +291,26 @@ class DocumentUploadValidationTest extends TestCase
 
         $this->post('/documents', $this->payload($folder))->assertSessionHasErrors('file');
         $this->assertNothingStored();
+    }
+
+    public function test_file_larger_than_fifty_mebibytes_is_rejected_with_specific_message(): void
+    {
+        $folder = $this->prepareUpload();
+        $payload = [...$this->payload($folder), 'file' => UploadedFile::fake()->create('terlalu-besar.pdf', 51_201, 'application/pdf')];
+
+        $this->post('/documents', $payload)
+            ->assertSessionHasErrors(['file' => 'Ukuran file maksimal 50 MB.']);
+        $this->assertNothingStored();
+    }
+
+    public function test_valid_file_below_fifty_mebibytes_is_accepted(): void
+    {
+        $folder = $this->prepareUpload();
+
+        $this->assertSame(51_200, config('documents.max_size_kb'));
+        $this->post('/documents', $this->payload($folder))->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('documents', 1);
+        Storage::disk('documents')->assertExists(Document::query()->sole()->files()->sole()->path);
     }
 
     public function test_preview_uses_the_same_destination_rules_as_upload(): void

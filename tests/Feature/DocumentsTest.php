@@ -55,8 +55,29 @@ class DocumentsTest extends TestCase
         $folder = Folder::query()->where('is_temporary', false)->where('is_official', true)->whereNotNull('parent_id')->firstOrFail();
         $payload = $this->payload($folder->id);
         $this->actingAs($this->admin)->post('/documents', $payload)->assertRedirect();
-        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertSessionHasErrors('file');
+        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))
+            ->assertSessionHasErrors(['file' => 'File yang sama masih tersimpan pada dokumen aktif. Hapus dokumen tersebut atau gunakan file lain.']);
         $this->assertDatabaseCount('documents', 1);
+    }
+
+    public function test_soft_deleted_document_does_not_block_reupload_of_the_same_file(): void
+    {
+        $folder = Folder::query()->where('is_temporary', false)->where('is_official', true)->whereNotNull('parent_id')->firstOrFail();
+        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertSessionHasNoErrors();
+        $deleted = Document::query()->sole();
+        $oldFile = $deleted->files()->sole();
+
+        $this->actingAs($this->admin)->delete('/documents/'.$deleted->id)->assertRedirect('/documents');
+        $this->assertSoftDeleted('documents', ['id' => $deleted->id]);
+        Storage::disk('documents')->assertExists($oldFile->path);
+
+        $this->actingAs($this->admin)->post('/documents', $this->payload($folder->id))->assertSessionHasNoErrors();
+        $replacement = Document::query()->sole();
+        $this->assertNotSame($deleted->id, $replacement->id);
+        $this->assertSame('V01', $replacement->version_code);
+        $this->assertSame(2, Document::withTrashed()->count());
+        $this->assertDatabaseCount('document_files', 2);
+        Storage::disk('documents')->assertExists($replacement->files()->sole()->path);
     }
 
     public function test_upload_version_is_a_dropdown_and_preserves_selected_value_after_error(): void

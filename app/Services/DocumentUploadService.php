@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\DocumentFileStorageFailed;
+use App\Exceptions\DocumentMetadataStorageFailed;
 use App\Exceptions\DuplicateDocument;
 use App\Models\Document;
 use App\Models\DocumentFile;
@@ -31,32 +33,49 @@ class DocumentUploadService
                 // Satu row tetap menyerialkan pengecekan checksum lintas pengguna/tahun sampai commit.
                 Folder::query()->where('code', '00_PEDOMAN_DAN_SOP')->whereNull('year')->whereNull('parent_id')->lockForUpdate()->firstOrFail();
                 $target = $this->metadata->target($data);
-                $duplicate = DocumentFile::query()->where('checksum_sha256', $checksum)->with(['document', 'revision.document'])->first();
-                if ($duplicate) {
-                    throw new DuplicateDocument($duplicate->document ?? $duplicate->revision->document);
+                $duplicate = DocumentFile::query()
+                    ->where('checksum_sha256', $checksum)
+                    ->where(fn ($query) => $query->whereHas('document')->orWhereHas('revision.document'))
+                    ->with(['document', 'revision.document'])
+                    ->first();
+                $duplicateDocument = $duplicate?->document ?? $duplicate?->revision?->document;
+                if ($duplicateDocument) {
+                    throw new DuplicateDocument($duplicateDocument);
                 }
                 $type = $this->metadata->documentType($target);
                 $extension = strtolower($file->getClientOriginalExtension());
                 $name = $this->filenames->generate([...$data, 'document_type' => $type], $extension);
-                $document = Document::create([
-                    'folder_id' => $target->id, 'target_folder_id' => $target->id,
-                    'title' => trim(preg_replace('/\s+/u', ' ', $data['title'])), 'description' => $data['description'] ?? null,
-                    'document_type' => $type, 'year' => $data['year'], 'period' => $data['period'] ?? null,
-                    'document_date' => $data['document_date'] ?? null, 'version_code' => ($data['version_code'] ?? null) ?: null, 'created_by' => $user->id,
-                ]);
-                $revision = $document->revisions()->create(['version_code' => ($data['version_code'] ?? null) ?: null, 'revision_number' => 1, 'submitted_by' => $user->id, 'submitted_at' => now()]);
-                $directory = $data['year'].'/'.$target->code.'/'.Str::uuid();
-                $path = Storage::disk('documents')->putFileAs($directory, $file, $name, ['visibility' => 'private']);
-                if ($path === false) {
-                    throw new RuntimeException('Penyimpanan file gagal.');
+                try {
+                    $document = Document::create([
+                        'folder_id' => $target->id, 'target_folder_id' => $target->id,
+                        'title' => trim(preg_replace('/\s+/u', ' ', $data['title'])), 'description' => $data['description'] ?? null,
+                        'document_type' => $type, 'year' => $data['year'], 'period' => $data['period'] ?? null,
+                        'document_date' => $data['document_date'] ?? null, 'version_code' => ($data['version_code'] ?? null) ?: null, 'created_by' => $user->id,
+                    ]);
+                    $revision = $document->revisions()->create(['version_code' => ($data['version_code'] ?? null) ?: null, 'revision_number' => 1, 'submitted_by' => $user->id, 'submitted_at' => now()]);
+                } catch (Throwable $e) {
+                    throw new DocumentMetadataStorageFailed($e);
                 }
-                $revision->files()->create([
-                    'document_id' => $document->id,
-                    'original_filename' => $file->getClientOriginalName(), 'stored_filename' => $name, 'disk' => 'documents', 'path' => $path,
-                    'extension' => $extension, 'mime_type' => $mime, 'size' => $file->getSize(),
-                    'checksum_sha256' => $checksum, 'file_role' => $data['file_role'], 'uploaded_by' => $user->id,
-                ]);
-                $document->update(['current_revision_id' => $revision->id]);
+                $directory = $data['year'].'/'.$target->code.'/'.Str::uuid();
+                try {
+                    $path = Storage::disk('documents')->putFileAs($directory, $file, $name, ['visibility' => 'private']);
+                } catch (Throwable $e) {
+                    throw new DocumentFileStorageFailed($e);
+                }
+                if ($path === false) {
+                    throw new DocumentFileStorageFailed;
+                }
+                try {
+                    $revision->files()->create([
+                        'document_id' => $document->id,
+                        'original_filename' => $file->getClientOriginalName(), 'stored_filename' => $name, 'disk' => 'documents', 'path' => $path,
+                        'extension' => $extension, 'mime_type' => $mime, 'size' => $file->getSize(),
+                        'checksum_sha256' => $checksum, 'file_role' => $data['file_role'], 'uploaded_by' => $user->id,
+                    ]);
+                    $document->update(['current_revision_id' => $revision->id]);
+                } catch (Throwable $e) {
+                    throw new DocumentMetadataStorageFailed($e);
+                }
 
                 return $document;
             });

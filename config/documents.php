@@ -1,7 +1,8 @@
 <?php
 
 return [
-    'max_size_kb' => (int) env('DOCUMENT_MAX_SIZE_KB', 25600),
+    // 50 MiB = 51,200 KiB. PHP's 50M shorthand uses the same binary unit.
+    'max_size_kb' => (int) env('DOCUMENT_MAX_SIZE_KB', 50 * 1024),
     'mime_types' => [
         'pdf' => ['application/pdf'],
         'doc' => ['application/msword', 'application/x-ole-storage', 'application/CDFV2'],

@@ -31,6 +31,19 @@ document.querySelector('[data-toggle-password]')?.addEventListener('click', (eve
 const uploadForm = document.getElementById('document-upload');
 if (uploadForm) {
     const field = (name) => uploadForm.elements.namedItem(name);
+    const maxFileSize = Number(uploadForm.dataset.maxFileSize);
+    const fileClientError = document.getElementById('file-client-error');
+    const validateFileSize = () => {
+        const file = field('file');
+        const message = file.files[0] && file.files[0].size > maxFileSize
+            ? `Ukuran file maksimal ${uploadForm.dataset.maxFileSizeLabel}. Pilih file lebih kecil.`
+            : '';
+        file.setCustomValidity(message);
+        fileClientError.textContent = message;
+        fileClientError.hidden = message === '';
+
+        return message === '';
+    };
     let groupOptions = [...field('group_folder_id').options].map(option => option.cloneNode(true));
     let typeOptions = [...field('target_folder_id').options].map(option => option.cloneNode(true));
     const filterOptions = (select, options, predicate) => {
@@ -108,16 +121,19 @@ if (uploadForm) {
         }, 300);
     };
     uploadForm.addEventListener('input', event => {
+        if (event.target.name === 'file') validateFileSize();
         if (['year', 'group_folder_id'].includes(event.target.name)) updateFolders();
         if (event.target.name === 'timing') updateTiming();
         refreshPreview();
     });
     uploadForm.addEventListener('change', event => {
+        if (event.target.name === 'file') validateFileSize();
         if (['year', 'group_folder_id'].includes(event.target.name)) updateFolders();
         if (event.target.name === 'timing') updateTiming();
         refreshPreview();
     });
     uploadForm.addEventListener('submit', event => {
+        if (! validateFileSize()) { event.preventDefault(); return; }
         if (uploadForm.dataset.submitting) { event.preventDefault(); return; }
         uploadForm.dataset.submitting = 'true';
         const button = uploadForm.querySelector('[data-submit-upload]');
