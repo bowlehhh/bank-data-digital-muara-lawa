@@ -109,6 +109,31 @@ class DocumentsTest extends TestCase
         Storage::disk('documents')->assertExists($document->files()->sole()->path);
     }
 
+    public function test_folder_counts_include_documents_in_nested_subfolders_without_double_counting(): void
+    {
+        $root = Folder::factory()->create();
+        $child = Folder::factory()->create(['parent_id' => $root->id]);
+        $empty = Folder::factory()->create(['parent_id' => $root->id]);
+        $deepest = $child;
+        for ($depth = 0; $depth < 5; $depth++) {
+            $deepest = Folder::factory()->create(['parent_id' => $deepest->id]);
+        }
+        foreach ([$root, $child, $deepest] as $folder) {
+            Document::factory()->create(['folder_id' => $folder->id, 'target_folder_id' => $folder->id, 'created_by' => $this->admin->id]);
+        }
+        Document::factory()->create(['folder_id' => $deepest->id, 'target_folder_id' => $deepest->id, 'created_by' => $this->admin->id, 'deleted_at' => now()]);
+        $otherRoot = Folder::factory()->create();
+        Document::factory()->create(['folder_id' => $otherRoot->id, 'target_folder_id' => $otherRoot->id, 'created_by' => $this->admin->id]);
+
+        $response = $this->actingAs($this->admin)->get('/documents?folder_id='.$root->id);
+
+        $response->assertOk()->assertSee('2 folder · 3 dokumen');
+        $this->assertSame(3, $response->viewData('tree')->find($root->id)->documents_count);
+        $this->assertSame(1, $response->viewData('tree')->find($otherRoot->id)->documents_count);
+        $this->assertSame(2, $response->viewData('subfolders')->find($child->id)->documents_count);
+        $this->assertSame(0, $response->viewData('subfolders')->find($empty->id)->documents_count);
+    }
+
     public function test_documents_can_be_searched_and_filtered(): void
     {
         $folder = Folder::query()->where('is_temporary', false)->where('is_official', true)->whereNotNull('parent_id')->firstOrFail();

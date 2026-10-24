@@ -23,7 +23,20 @@ class DocumentController extends Controller
     {
         $data = $request->validated();
         $activeFolder = isset($data['folder_id']) ? Folder::query()->with('parent')->where('is_temporary', false)->find($data['folder_id']) : null;
-        $tree = Folder::query()->with(['children.children.children.children'])->withCount(['children', 'documents'])->whereNull('parent_id')->where('is_active', true)->where('is_temporary', false)->orderBy('year')->orderBy('sort_order')->get();
+        $folders = Folder::query()->withCount(['children', 'documents'])->where('is_active', true)->where('is_temporary', false)->orderBy('year')->orderBy('sort_order')->get();
+        $foldersById = $folders->keyBy('id');
+        $directDocumentCounts = $folders->pluck('documents_count', 'id');
+
+        foreach ($folders as $folder) {
+            $parent = $foldersById->get($folder->parent_id);
+
+            while ($parent !== null) {
+                $parent->documents_count += $directDocumentCounts[$folder->id];
+                $parent = $foldersById->get($parent->parent_id);
+            }
+        }
+
+        $tree = $folders->whereNull('parent_id');
         $query = Document::query()->with(['folder', 'currentRevision', 'files']);
         if ($term = $data['q'] ?? null) {
             $like = '%'.$term.'%';
@@ -33,10 +46,10 @@ class DocumentController extends Controller
         return view('documents.index', [
             'documents' => $query->when($data['year'] ?? null, fn ($q, $value) => $q->where('year', $value))->when($data['folder_id'] ?? null, fn ($q, $value) => $q->where('folder_id', $value))->when($data['period'] ?? null, fn ($q, $value) => $q->where('period', $value))->when($data['version_code'] ?? null, fn ($q, $value) => $q->where('version_code', $value))->when($data['extension'] ?? null, fn ($q, $value) => $q->whereHas('files', fn ($files) => $files->where('extension', $value)))->orderBy('created_at', ($data['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc')->orderByDesc('id')->paginate(15)->withQueryString(),
             'years' => Document::query()->select('year')->distinct()->orderByDesc('year')->pluck('year'),
-            'folders' => Folder::query()->where('is_active', true)->where('is_temporary', false)->orderBy('year')->orderBy('sort_order')->get(),
+            'folders' => $folders,
             'tree' => $tree,
             'activeFolder' => $activeFolder,
-            'subfolders' => $activeFolder?->children()->where('is_active', true)->where('is_temporary', false)->withCount(['children', 'documents'])->orderBy('sort_order')->get() ?? collect(),
+            'subfolders' => $activeFolder ? $folders->where('parent_id', $activeFolder->id)->sortBy([['sort_order', 'asc'], ['id', 'asc']])->values() : collect(),
         ]);
     }
 
